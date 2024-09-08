@@ -20,7 +20,7 @@ const generateRefreshToken = (id,res) =>{
   }
 }
 /**
- * @openapi
+ * @swagger
  * /auth/register:
  *   post:
  *     summary: Cadastra um novo usuário.
@@ -31,24 +31,56 @@ const generateRefreshToken = (id,res) =>{
  *           schema:
  *             type: object
  *             properties:
+ *               name:
+ *                 type: string
+ *                 example: user
  *               email:
  *                 type: string
  *                 example: user@example.com
  *               password:
  *                 type: string
  *                 example: senha123
+ *             required:
+ *               - name
+ *               - email
+ *               - password
  *     responses:
- *       201:
+ *       200:
  *         description: Usuário cadastrado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Usuário cadastrado com sucesso."
  *       400:
- *         description: Dados inválidos.
+ *         description: O usuário já existe ou dados inválidos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "O usuário já existe."
+ *       500:
+ *         description: Falha no registro devido a erro interno do servidor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Falha no registro."
  */
 module.exports.register = async (req, res) => {
   const {name, email, password} = req.body;
   // check if user exits
   const userExists = await User.findOne({ email: email });
   if(userExists){
-    // return next(new createError('User already exists',400));
     logger.info('User already exists');
      return res.status(400).json({message: 'User already exists'})
   }
@@ -66,14 +98,14 @@ module.exports.register = async (req, res) => {
   try {
     await user.save();
     logger.info("User registered sucessfully")
-    res.status(201).json({ user, message:'User registered sucessfully' })
+    res.status(200).json({ user, message:'User registered sucessfully' })
   } catch (err) {
     logger.error("Registration failed.")
     res.status(500).json({message: 'Registration failed.'})
   }
 }
 /**
- * @openapi
+ * @swagger
  * /auth/login:
  *   post:
  *     summary: Realiza o login de um usuário.
@@ -90,9 +122,12 @@ module.exports.register = async (req, res) => {
  *               password:
  *                 type: string
  *                 example: senha123
+ *             required:
+ *               - email
+ *               - password
  *     responses:
  *       200:
- *         description: Login bem-sucedido.
+ *         description: Login bem-sucedido. Retorna um token de autenticação.
  *         content:
  *           application/json:
  *             schema:
@@ -100,9 +135,37 @@ module.exports.register = async (req, res) => {
  *               properties:
  *                 token:
  *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *       400:
+ *         description: O usuário não existe.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "O usuário não existe."
  *       401:
- *         description: Credenciais inválidas.
+ *         description: E-mail ou senha incorretos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "E-mail ou senha incorretos."
+ *       500:
+ *         description: Erro durante o processo de login.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Erro interno do servidor."
  */
 module.exports.login = async(req, res) => {
     const { email, password } = req.body;
@@ -127,10 +190,10 @@ module.exports.login = async(req, res) => {
       res.cookie('token', token);
       generateRefreshToken(user.id,res);
       logger.info(`User ${user.id} logged in successfully.`);
-      return res.json({status: 'success', token});
+      return res.status(200).json({token});
     } catch (err) {
       logger.error(`Error during login process: ${err.message}`);
-      res.status(500).json({message: 'A server error occurred, please try again later!'})
+      res.status(500).json({message: 'Error during login process'})
     }
 }
 /**
@@ -138,54 +201,105 @@ module.exports.login = async(req, res) => {
  * /auth/profile:
  *   get:
  *     summary: Retorna as informações do perfil do usuário.
+ *     description: Este endpoint recupera as informações do perfil do usuário autenticado. O usuário deve fornecer um token de autenticação válido no cabeçalho da solicitação.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Informações do perfil do usuário.
+ *         description: Sucesso ao recuperar as informações do perfil.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 email:
- *                   type: string
- *                   example: user@example.com
- *                 name:
- *                   type: string
- *                   example: Nome do Usuário
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "12345"
+ *                     name:
+ *                       type: string
+ *                       example: "João da Silva"
+ *                     email:
+ *                       type: string
+ *                       example: "joao.silva@example.com"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-01-01T12:00:00Z"
  *       401:
- *         description: Não autorizado.
+ *         description: Token de autenticação inválido ou não fornecido.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token de autenticação inválido ou não fornecido."
+ *       500:
+ *         description: Erro ao recuperar informações do usuário.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Erro ao recuperar informações do usuário."
  */
+
 module.exports.infoUser = async (req, res) => {
   const id = req.user.id;
   try {
     const user = await User.findById(id);
     logger.info("success")
-    return res.json({ status: 'success', name: user.name, email: user.email});
+    return res.status(200).json({ name: user.name, email: user.email});
   } catch (err) {
     logger.error(`Error retrieving user info for ID ${id}: ${err.message}`)
-    return res.status(500).json({ message: "A server error occurred, please try again later!" });
+    return res.status(500).json({ message: "Error retrieving user info for ID" });
   }
 };
 /**
  * @openapi
  * /auth/refresh-token:
- *   post:
+ *   get:
  *     summary: Atualiza o token de autenticação.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               refreshToken:
- *                 type: string
- *                 example: refresh-token-exemplo
+ *     description: Este endpoint permite que um usuário atualize seu token de autenticação. O usuário deve fornecer um token de autenticação válido no cabeçalho da solicitação para obter um novo token.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Token atualizado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *       401:
- *         description: Token inválido.
+ *         description: Token de autenticação inválido ou expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token de autenticação inválido ou expirado."
+ *       500:
+ *         description: Erro ao gerar token para ID do usuário.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Erro interno ao gerar token de autenticação."
  */
 module.exports.refreshToken = (req, res) => {
   const id = req.user.id;
@@ -195,7 +309,7 @@ module.exports.refreshToken = (req, res) => {
     return res.json({ token });
   } catch (err) {
     logger.error(`Error generating token for user ${id}: ${err.message}`);
-    return res.status(500).json({ message: "A server error occurred, please try again later!" });
+    return res.status(500).json({ message: "Error generating token for user id!" });
   }
 };
 /**
@@ -203,6 +317,7 @@ module.exports.refreshToken = (req, res) => {
  * /auth/forgot-password:
  *   post:
  *     summary: Recupera a senha do usuário.
+ *     description: Este endpoint permite que um usuário recupere sua senha enviando um e-mail para o endereço fornecido. Se o e-mail estiver registrado, um e-mail de recuperação será enviado ao usuário.
  *     requestBody:
  *       required: true
  *       content:
@@ -212,12 +327,51 @@ module.exports.refreshToken = (req, res) => {
  *             properties:
  *               email:
  *                 type: string
+ *                 format: email
  *                 example: user@example.com
+ *             required:
+ *               - email
  *     responses:
  *       200:
- *         description: Email enviado para recuperação de senha.
- *       404:
- *         description: Usuário não encontrado.
+ *         description: E-mail enviado para recuperação de senha com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "E-mail de recuperação de senha enviado com sucesso."
+ *       401:
+ *         description: Erro ao enviar e-mail de recuperação.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Erro ao enviar e-mail de recuperação. Tente novamente."
+ *       422:
+ *         description: O e-mail fornecido não está associado a nenhum usuário registrado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "O e-mail fornecido não está associado a nenhum usuário registrado."
+ *       500:
+ *         description: Erro interno ao tentar recuperar a senha.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Erro interno ao tentar recuperar a senha. Tente novamente mais tarde."
  */
 module.exports.forgotPassword = async(req, res) =>{
   const { email } = req.body;
@@ -252,10 +406,10 @@ module.exports.forgotPassword = async(req, res) =>{
     transport.sendMail(mailOptions, function(error, info){
       if (error) {
         logger.warn("error sending email")
-        return res.status(401).json({message: 'error sending email'});
+        return res.status(401).json({message: 'Error sending email'});
       } else {
         logger.infor("success")
-        return res.json({status: 'success', message: 'email sent'});
+        return res.status(200).json({message: 'Email sent to recover password'});
       }
     });
    
@@ -269,6 +423,7 @@ module.exports.forgotPassword = async(req, res) =>{
  * /auth/reset-password:
  *   post:
  *     summary: Redefine a senha do usuário.
+ *     description: Este endpoint permite que um usuário redefina sua senha usando um token de recuperação válido enviado anteriormente para o e-mail do usuário. O novo token de senha deve ser incluído no cabeçalho ou no corpo da solicitação, conforme a implementação.
  *     requestBody:
  *       required: true
  *       content:
@@ -278,16 +433,58 @@ module.exports.forgotPassword = async(req, res) =>{
  *             properties:
  *               token:
  *                 type: string
- *                 example: reset-token
+ *                 description: Token de recuperação enviado para o e-mail do usuário.
+ *                 example: "a1b2c3d4e5f6g7h8i9j0"
  *               newPassword:
  *                 type: string
+ *                 description: Nova senha que será definida para o usuário.
  *                 example: novaSenha123
+ *             required:
+ *               - token
+ *               - newPassword
  *     responses:
  *       200:
  *         description: Senha redefinida com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Senha redefinida com sucesso."
  *       400:
- *         description: Token de redefinição inválido ou dados inválidos.
+ *         description: Solicitação inválida, verifique os dados fornecidos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Dados inválidos fornecidos."
+ *       401:
+ *         description: Token de recuperação inválido ou expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token de recuperação inválido ou expirado."
+ *       500:
+ *         description: Erro interno ao tentar redefinir a senha.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Erro interno ao tentar redefinir a senha. Tente novamente mais tarde."
  */
+
 module.exports.resetPassword = async(req, res) => {
   const {token} = req.params;
   const {password} = req.body;
@@ -297,8 +494,8 @@ module.exports.resetPassword = async(req, res) => {
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(password, salt);
     await User.findByIdAndUpdate({_id:id}, { password: passwordHash})
-    logger.info('success reset password,')
-    return res.json({status: 'success', message:'updated password'})
+    logger.info('Success reset password,')
+    return res.status(200).json({message:'updated password'})
   } catch (err) {
     logger.error("Cannot reset password, try again.")
     return res.status(500).json({ message: "Cannot reset password, try again." });
@@ -307,27 +504,47 @@ module.exports.resetPassword = async(req, res) => {
 /**
  * @openapi
  * /auth/logout:
- *   post:
+ *   get:
  *     summary: Faz logout do usuário.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               token:
- *                 type: string
- *                 example: exemplo-token
+ *     description: Este endpoint permite que um usuário faça logout, invalidando o token de autenticação atual. O usuário deve fornecer um token válido no cabeçalho da solicitação para que o logout seja bem-sucedido.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Logout bem-sucedido.
+ *         description: Logout bem-sucedido. O token de autenticação foi invalidado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Logout realizado com sucesso."
  *       401:
- *         description: Token inválido ou não fornecido.
+ *         description: Token de autenticação inválido ou não fornecido.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token de autenticação inválido ou não fornecido."
+ *       500:
+ *         description: Erro interno ao tentar realizar o logout.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Erro interno ao tentar realizar o logout. Tente novamente mais tarde."
  */
+
 module.exports.logout = (req, res) => {
   res.clearCookie("refreshToken",{expiresIn: 0});
-  logger.info('success')
-  res.json({ status: 'success' });
+  logger.info('Logout successful')
+  res.status(200).json({message: "Logout successful."})
 };
 
