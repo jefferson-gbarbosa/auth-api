@@ -135,7 +135,3 @@ Para ermitir que usuários encerrem suas sessões e invalidem tokens de acesso, 
 ## Documentação da API (Swagger)
 
 Para documentação da API, acesse o link: http://localhost:3000/api-docs/
-
-## Licença
-
-[Mit](http://escolhaumalicenca.com.br/licencas/mit/)
