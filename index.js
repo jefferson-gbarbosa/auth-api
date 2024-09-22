@@ -54,13 +54,10 @@ app.use(express.json());
 app.use(limiter);
 app.use(helmet());
 app.use(cookieParser());
-// app.use(cors({
-//     origin: ["http://localhost:5173"],
-//     methods: ["GET","POST"],
-//     credentials: true
-// }));
-app.use(cors({ 
-    origem: '*' 
+app.use(cors({
+    origin: ["http://localhost:5173"],
+    methods: ["GET","POST"],
+    credentials: true
 }));
 
 app.use(morgan('combined', {
