@@ -21,11 +21,6 @@ const swaggerDefinition = {
         version: '1.0.0',
         description: 'API de autenticação com login, cadastro, recuperação de senha e perfil.',
     },
-    servers: [
-        {
-            url: 'http://localhost:3000',
-        }
-    ],
     components: {
         securitySchemes: {
           bearerAuth: {
