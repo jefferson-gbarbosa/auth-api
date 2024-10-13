@@ -3,7 +3,7 @@ const logger = require("../utils/logger")
 
 const requireAuth = (req, res, next) => {
   const token = req.cookies.token;
-
+  console.log(token)
   if (token) {
     jwt.verify(token, process.env.SECRET, (err, decoded) => {
       if (err) {
