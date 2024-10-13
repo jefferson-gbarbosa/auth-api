@@ -375,19 +375,18 @@ module.exports.refreshToken = (req, res) => {
  */
 module.exports.forgotPassword = async(req, res) =>{
   const { email } = req.body;
+  
   try {
-    const oldUser = await User.findOne({ email: email });
-
-    if(!oldUser){
-      logger.error("User does not exist")
-      return res.status(422).json({
-        message: 'User does not exist'
-      })
-    }
+    const oldUser = await User.findOne({ email });
     
-    const token = jwt.sign({ id: oldUser.id }, process.env.SECRET, { expiresIn: 60 * 15});
+    if (!oldUser) {
+      logger.error("User does not exist");
+      return res.status(422).json({ message: 'User does not exist' });
+    }
 
-    var transport = nodemailer.createTransport({
+    const token = jwt.sign({ id: oldUser.id }, process.env.SECRET, { expiresIn: '15m' });
+
+    const transport = nodemailer.createTransport({
       host: process.env.MAIL_HOST,
       port: process.env.MAIL_PORT,
       auth: {
@@ -403,20 +402,15 @@ module.exports.forgotPassword = async(req, res) =>{
       text: `http://localhost:5173/reset-password/${token}`
     };
     
-    transport.sendMail(mailOptions, function(error, info){
-      if (error) {
-        logger.warn("error sending email")
-        return res.status(401).json({message: 'Error sending email'});
-      } else {
-        logger.infor("success")
-        return res.status(200).json({message: 'Email sent to recover password'});
-      }
-    });
-   
+    await transport.sendMail(mailOptions);
+    logger.info("Password reset email sent successfully");
+
+    return res.status(200).json({ message: 'Email sent to recover password' });
+    
   } catch (err) {
-    logger.error("Error on forgot password, try again")
-    return res.status(500).json({ message: "Error on forgot password, try again" });
-  }
+    logger.error("Error on forgot password: " + err.message);
+    return res.status(500).json({ message: "Error on forgot password, please try again" });
+  }    
 }
 /**
  * @openapi
