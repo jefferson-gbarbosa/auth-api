@@ -254,11 +254,17 @@ module.exports.infoUser = async (req, res) => {
   const id = req.user.id;
   try {
     const user = await User.findById(id);
-    logger.info("success")
-    return res.status(200).json({ name: user.name, email: user.email});
+       // Verifique se o usuário foi encontrado
+    if (!user) {
+      logger.warn(`User with ID ${id} not found`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    logger.info(`Successfully retrieved user info for ID ${id}`);
+    return res.status(200).json({ name: user.name, email: user.email });
   } catch (err) {
-    logger.error(`Error retrieving user info for ID ${id}: ${err.message}`)
-    return res.status(500).json({ message: "Error retrieving user info for ID" });
+    logger.error(`Error retrieving user info for ID ${id}: ${err.message}`);
+    return res.status(500).json({ message: "Error retrieving user info" });
   }
 };
 /**
