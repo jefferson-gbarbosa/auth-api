@@ -1,0 +1,2 @@
+{"level":"info","message":"User registered sucessfully","timestamp":"2024-10-13 09:14:31.369 AM"}
+{"level":"info","message":"::1 - - [13/Oct/2024:12:14:31 +0000] \"POST /auth/signup HTTP/1.1\" 200 206 \"-\" \"PostmanRuntime/7.42.0\"","timestamp":"2024-10-13 09:14:31.380 AM"}
