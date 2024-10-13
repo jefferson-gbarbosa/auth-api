@@ -3,19 +3,20 @@ const logger = require("../utils/logger")
 
 const requireAuth = (req, res, next) => {
   const token = req.cookies.token;
-  if(token){
-    jwt.verify(token, process.env.SECRET, (err, decoded)=> {
-      if(err){
-        logger.error("No token found")
-        res.json({ status: 'Erro', message: "No token found"});
-      }else{
-        req.user= decoded
-        next();
+
+  if (token) {
+    jwt.verify(token, process.env.SECRET, (err, decoded) => {
+      if (err) {
+        logger.error("Token verification failed: " + err.message);
+        return res.status(401).json({ status: 'Erro', message: "Invalid token" });
+      } else {
+        req.user = decoded; // Armazena as informações decodificadas no objeto de requisição
+        next(); // Chama o próximo middleware ou rota
       }
-    })
-  }else{
-    logger.error("A server error occurred, please try again later!")
-    res.json({ status: 'Erro', message: "A server error occurred, please try again later!"});
+    });
+  } else {
+    logger.error("No token provided");
+    return res.status(401).json({ status: 'Erro', message: "No token provided" });
   }
 
 };
