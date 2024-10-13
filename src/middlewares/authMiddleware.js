@@ -27,21 +27,22 @@ const requireAuth = (req, res, next) => {
 
 // check current user
 const requireRefreshToken = (req, res, next) => {
-  try {
-    const refreshTokenCookie = req.cookies.refreshToken;
-    jwt.verify(refreshTokenCookie,process.env.JWT_REFRESH, (err, decoded)=> {
-      if(err){
-        logger.error("No token found")
-        res.json({ status: 'Erro', message: "No token found"});
-      }else{
-        req.user= decoded
-        next();
-      }
-    })
-  } catch (err) {
-    logger.error("A server error occurred, please try again later!")
-    return res.status(500).json({ msg: "A server error occurred, please try again later!" });
-  } 
+  const refreshTokenCookie = req.cookies.refreshToken;
+
+  if (!refreshTokenCookie) {
+    logger.error("No refresh token found");
+    return res.status(401).json({ status: 'Erro', message: "No refresh token provided" });
+  }
+
+  jwt.verify(refreshTokenCookie, process.env.JWT_REFRESH, (err, decoded) => {
+    if (err) {
+      logger.error("Invalid refresh token: " + err.message);
+      return res.status(401).json({ status: 'Erro', message: "Invalid refresh token" });
+    } else {
+      req.user = decoded; // Armazena as informações decodificadas no objeto de requisição
+      next(); // Chama o próximo middleware ou rota
+    }
+  });
 };
 
 module.exports = { requireAuth, requireRefreshToken };
