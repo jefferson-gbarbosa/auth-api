@@ -21,7 +21,7 @@ const generateRefreshToken = (id,res) =>{
 }
 /**
  * @swagger
- * /auth/register:
+ * /auth/signup:
  *   post:
  *     summary: Cadastra um novo usuário.
  *     requestBody:
