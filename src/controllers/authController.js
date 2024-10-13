@@ -558,7 +558,8 @@ module.exports.resetPassword = async(req, res) => {
 module.exports.logout = (req, res) => {
   try {
     // Limpa o cookie de refresh token
-    res.clearCookie();
+    res.clearCookie("refreshToken", { httpOnly: true, secure: true });
+    res.clearCookie("token", { httpOnly: true, secure: true });
     // Loga a ação de logout
     logger.info('Logout successful');
     
