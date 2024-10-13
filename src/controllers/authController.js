@@ -556,8 +556,18 @@ module.exports.resetPassword = async(req, res) => {
  */
 
 module.exports.logout = (req, res) => {
-  res.clearCookie("refreshToken",{expiresIn: 0});
-  logger.info('Logout successful')
-  res.status(200).json({message: "Logout successful."})
+  try {
+    // Limpa o cookie de refresh token
+    res.clearCookie("refreshToken", { httpOnly: true, secure: true });
+    
+    // Loga a ação de logout
+    logger.info('Logout successful');
+    
+    // Retorna uma resposta de sucesso
+    res.status(200).json({ message: "Logout successful." });
+  } catch (error) {
+      logger.error(`Logout error: ${error.message}`);
+      res.status(500).json({ message: "An error occurred during logout." });
+  }
 };
 
