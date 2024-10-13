@@ -487,11 +487,20 @@ module.exports.resetPassword = async(req, res) => {
     const id = verify.id;
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(password, salt);
-    await User.findByIdAndUpdate({_id:id}, { password: passwordHash})
-    logger.info('Success reset password,')
-    return res.status(200).json({message:'updated password'})
+    const user = await User.findByIdAndUpdate({_id:id}, { password: passwordHash})
+    if (!user) {
+      logger.warn(`User with id ${id} not found`);
+      return res.status(404).json({ message: 'User not found' });
+    }
+    logger.info('Successfully reset password for user', { userId: id });
+    return res.status(200).json({ message: 'Password updated successfully' });
   } catch (err) {
-    logger.error("Cannot reset password, try again.")
+    if (err instanceof jwt.JsonWebTokenError) {
+      logger.error("Invalid token");
+      return res.status(400).json({ message: "Invalid token" });
+    }
+
+    logger.error("Cannot reset password, try again.", { error: err.message });
     return res.status(500).json({ message: "Cannot reset password, try again." });
   }
 };
