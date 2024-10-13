@@ -57,7 +57,6 @@ app.use(morgan('combined', {
     }
 }));
 
-// app.use(express.urlencoded({ extended: true }));
 app.use("/auth",authRouter)
 
 const PORT = process.env.PORT || 5000;
