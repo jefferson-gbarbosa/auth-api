@@ -4,7 +4,6 @@ const express = require('express')
 const { connectdb } = require('./src/database/connectdb');
 const cookieParser = require('cookie-parser');
 const cors = require('cors')
-const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const logger = require('./src/utils/logger.js')
 const morgan = require('morgan');
