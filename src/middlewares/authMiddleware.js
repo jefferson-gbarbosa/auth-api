@@ -2,8 +2,12 @@ const jwt = require('jsonwebtoken');
 const logger = require("../utils/logger")
 
 const requireAuth = (req, res, next) => {
-  console.log('Cookies: ', req.cookies);
-  const token = req.cookies.token;
+
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
+    : req.body.token || req.query.token || req.headers['x-access-token'];
+
   if (token) {
     jwt.verify(token, process.env.SECRET, (err, decoded) => {
       if (err) {
@@ -39,6 +43,5 @@ const requireRefreshToken = (req, res, next) => {
     return res.status(500).json({ msg: "A server error occurred, please try again later!" });
   } 
 };
-
 
 module.exports = { requireAuth, requireRefreshToken };
