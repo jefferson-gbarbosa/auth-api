@@ -189,7 +189,7 @@ module.exports.login = async(req, res) => {
       const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: 60 * 15});
       res.cookie('token', token, {
         httpOnly: true,
-        maxAge: 15 * 60 * 1000 // Duração do cookie (15 minutos)
+        expires: new Date(Date.now() + 60 * 15 * 1000),
       });
       generateRefreshToken(user.id,res);
       logger.info(`User ${user.id} logged in successfully.`);
