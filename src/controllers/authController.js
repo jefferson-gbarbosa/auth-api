@@ -189,7 +189,6 @@ module.exports.login = async(req, res) => {
       const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: 60 * 15});
       res.cookie('token', token, {
         httpOnly: true,
-        sameSite: 'strict',
         maxAge: 15 * 60 * 1000 // Duração do cookie (15 minutos)
       });
       generateRefreshToken(user.id,res);

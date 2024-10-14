@@ -28,7 +28,7 @@ const requireAuth = (req, res, next) => {
 // check current user
 const requireRefreshToken = (req, res, next) => {
   const refreshTokenCookie = req.cookies.refreshToken;
-
+  console.log(refreshTokenCookie)
   if (!refreshTokenCookie) {
     logger.error("No refresh token found");
     return res.status(401).json({ status: 'Erro', message: "No refresh token provided" });
