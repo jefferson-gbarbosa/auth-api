@@ -43,14 +43,13 @@ const swaggerSpec = swaggerJsdoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(express.json());
-app.use(helmet());
 app.use(cookieParser());
-
 app.use(cors({
     origin: ["http://localhost:5173"],
     methods: ["GET","POST"],
     credentials: true
 }));
+app.use(helmet());
 
 app.use(morgan('combined', {
     stream: {
