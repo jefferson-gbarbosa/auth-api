@@ -5,8 +5,6 @@ const { connectdb } = require('./src/database/connectdb');
 const cookieParser = require('cookie-parser');
 const cors = require('cors')
 const helmet = require('helmet');
-const logger = require('./src/utils/logger.js')
-const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const authRouter = require('./src/routes/authRoutes.js')
@@ -50,12 +48,6 @@ app.use(cors({
     credentials: true
 }));
 app.use(helmet());
-
-app.use(morgan('combined', {
-    stream: {
-      write: message => logger.info(message.trim())
-    }
-}));
 
 app.use("/auth",authRouter)
 

@@ -1,4 +1,0 @@
-{"level":"info","message":"User registered sucessfully","timestamp":"2024-10-13 09:14:31.369 AM"}
-{"level":"info","message":"::1 - - [13/Oct/2024:12:14:31 +0000] \"POST /auth/signup HTTP/1.1\" 200 206 \"-\" \"PostmanRuntime/7.42.0\"","timestamp":"2024-10-13 09:14:31.380 AM"}
-{"level":"error","message":"No token provided","timestamp":"2024-10-13 04:34:24.127 PM"}
-{"level":"info","message":"::1 - - [13/Oct/2024:19:34:24 +0000] \"GET /auth/profile HTTP/1.1\" 401 47 \"-\" \"PostmanRuntime/7.42.0\"","timestamp":"2024-10-13 04:34:24.138 PM"}

@@ -1,24 +1,11 @@
 const User = require("../models/User");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer');
 
-const logger = require("../utils/logger")
+const { generateTokenAndSetCookie } = require("../utils/auth");
+const { send } = require("../mailtrap/mailtrap")
+const { sendVerificationEmail } = require("../mailtrap/emails")
 
-const generateRefreshToken = (id,res) =>{
-  const expiresIn = 60 * 60 * 24 * 30;
-  try {
-      const refreshToken = jwt.sign({ id }, process.env.JWT_REFRESH, {
-          expiresIn,
-      });
-      return res.cookie('refreshToken', refreshToken, {
-          httpOnly: true,
-          expires: new Date(Date.now() + expiresIn * 1000),
-      });
-  } catch (err) {
-    logger.error(err);
-  }
-}
 /**
  * @swagger
  * /auth/signup:
@@ -78,31 +65,73 @@ const generateRefreshToken = (id,res) =>{
  */
 module.exports.register = async (req, res) => {
   const {name, email, password} = req.body;
-  // check if user exits
-  const userExists = await User.findOne({ email: email });
-  if(userExists){
-    logger.info('User already exists');
-     return res.status(400).json({message: 'User already exists'})
-  }
-  // Creat password
-  const salt = await bcrypt.genSalt();
-  const passwordHash = await bcrypt.hash(password, salt);
-
-  // Creat User
-  const user = new User({
-    name,
-    email,
-    password: passwordHash,
-  })
-
+  
   try {
+    // check if user exits
+    const userExists = await User.findOne({ email: email });
+    if(userExists){
+      return res.status(400).json({success:false, message: 'User already exists'})
+    }
+    // Creat password
+    const salt = await bcrypt.genSalt();
+    const passwordHash = await bcrypt.hash(password, salt);
+    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Creat User
+    const user = new User({
+      name,
+      email,
+      password: passwordHash,
+      verificationToken,
+      verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    })
     await user.save();
-    logger.info("User registered sucessfully")
-    res.status(200).json({ user, message:'User registered sucessfully' })
+
+    generateTokenAndSetCookie(user._id,res)
+      
+    await sendVerificationEmail(user.email, verificationToken);
+
+    res.status(200).json({ success: true, message:'User registered sucessfully',
+      user: {
+				...user._doc,
+				password: undefined,
+			}
+    })
   } catch (err) {
-    logger.error("Registration failed.")
+    console.log(err)
     res.status(500).json({message: 'Registration failed.'})
   }
+}
+
+module.exports.verifyEmail = async(req, res) =>{
+  const { code } = req.body;
+	try {
+		const user = await User.findOne({
+			verificationToken: code,
+			verificationTokenExpiresAt: { $gt: Date.now() },
+		});
+
+		if (!user) {
+			return res.status(400).json({ success: false, message: "Invalid or expired verification code" });
+		}
+
+		user.isVerified = true;
+		user.verificationToken = undefined;
+		user.verificationTokenExpiresAt = undefined;
+		await user.save();
+
+		res.status(200).json({
+			success: true,
+			message: "Email verified successfully",
+			user: {
+				...user._doc,
+				password: undefined,
+			},
+		});
+	} catch (error) {
+		console.log("error in verifyEmail ", error);
+		res.status(500).json({ success: false, message: "Server error" });
+	}
 }
 /**
  * @swagger
@@ -169,34 +198,24 @@ module.exports.register = async (req, res) => {
  */
 module.exports.login = async(req, res) => {
     const { email, password } = req.body;
-    // check if user exits
-    const user = await User.findOne({ email: email })
-
-    if(!user){
-      logger.warn(`Login attempt with non-existing email: ${email}`);
-      return res.status(400).json({message: 'User does not exist'})
-    }
-
-    // check if password match
-    const checkPassword = await bcrypt.compare(password, user.password);
-
-    if (!checkPassword) {
-      logger.warn(`Incorrect password attempt for email: ${email}`);
-      return res.status(401).json({ message: "Incorrect email or password" });
-    }
-
     try {
-      const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: 60 * 15});
-      res.cookie('token', token, {
-        httpOnly: true,
-        expires: new Date(Date.now() + 60 * 15 * 1000),
-      });
-      generateRefreshToken(user.id,res);
-      logger.info(`User ${user.id} logged in successfully.`);
-      return res.status(200).json({token});
+      const user = await User.findOne({ email: email })
+      if(!user){
+        return res.status(400).json({success: false, message: 'User does not exist'})
+      }
+      // check if password match
+      const checkPassword = await bcrypt.compare(password, user.password);
+  
+      if (!checkPassword) {
+        return res.status(401).json({ success: false, message: "Incorrect email or password" });
+      }
+      const token = generateTokenAndSetCookie(user._id, res)
+      user.lastLogin = new Date();
+		  await user.save();
+      return res.status(200).json({success: true, message: "logged in successfully", token});
     } catch (err) {
-      logger.error(`Error during login process: ${err.message}`);
-      res.status(500).json({message: 'Error during login process'})
+      console.log(err)
+      res.status(500).json({success: false,message: 'Error during login process'})
     }
 }
 /**
@@ -257,70 +276,15 @@ module.exports.infoUser = async (req, res) => {
   const id = req.user.id;
   try {
     const user = await User.findById(id);
-       // Verifique se o usuário foi encontrado
     if (!user) {
-      logger.warn(`User with ID ${id} not found`);
       return res.status(404).json({ message: "User not found" });
     }
-
-    logger.info(`Successfully retrieved user info for ID ${id}`);
     return res.status(200).json({ name: user.name, email: user.email });
   } catch (err) {
-    logger.error(`Error retrieving user info for ID ${id}: ${err.message}`);
     return res.status(500).json({ message: "Error retrieving user info" });
   }
 };
-/**
- * @openapi
- * /auth/refresh-token:
- *   get:
- *     summary: Atualiza o token de autenticação.
- *     description: Este endpoint permite que um usuário atualize seu token de autenticação. O usuário deve fornecer um token de autenticação válido no cabeçalho da solicitação para obter um novo token.
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Token atualizado com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *       401:
- *         description: Token de autenticação inválido ou expirado.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Token de autenticação inválido ou expirado."
- *       500:
- *         description: Erro ao gerar token para ID do usuário.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Erro interno ao gerar token de autenticação."
- */
-module.exports.refreshToken = (req, res) => {
-  const id = req.user.id;
-  try {
-    const token = jwt.sign({ id }, process.env.SECRET, { expiresIn: 60 * 15});
-    logger.info(`Token generated for user ${id}.`);
-    return res.json({ token });
-  } catch (err) {
-    logger.error(`Error generating token for user ${id}: ${err.message}`);
-    return res.status(500).json({ message: "Error generating token for user id!" });
-  }
-};
+
 /**
  * @openapi
  * /auth/forgot-password:
@@ -348,7 +312,7 @@ module.exports.refreshToken = (req, res) => {
  *             schema:
  *               type: object
  *               properties:
- *                 message:
+ *                 mess age:
  *                   type: string
  *                   example: "E-mail de recuperação de senha enviado com sucesso."
  *       401:
@@ -389,35 +353,31 @@ module.exports.forgotPassword = async(req, res) =>{
     const oldUser = await User.findOne({ email });
     
     if (!oldUser) {
-      logger.error("User does not exist");
       return res.status(422).json({ message: 'User does not exist' });
     }
-
-    const token = jwt.sign({ id: oldUser.id }, process.env.SECRET, { expiresIn: '15m' });
-
-    const transport = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: process.env.MAIL_PORT,
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS
-      }
-    });
-
-    var mailOptions = {
-      from: 'youremail@gmail.com',
-      to: 'myfriend@yahoo.com',
-      subject: 'Reset password',
-      text: `http://localhost:5173/reset-password/${token}`
-    };
+    const token = generateTokenAndSetCookie(oldUser.id)
+    send(token)
     
-    await transport.sendMail(mailOptions);
-    logger.info("Password reset email sent successfully");
 
-    return res.status(200).json({ message: 'Email sent to recover password' });
+    // const transport = nodemailer.createTransport({
+    //   host: process.env.MAIL_HOST,
+    //   port: process.env.MAIL_PORT,
+    //   auth: {
+    //     user: process.env.MAIL_USER,
+    //     pass: process.env.MAIL_PASS
+    //   }
+    // });
+
+    // var mailOptions = {
+    //   from: 'youremail@gmail.com',
+    //   to: 'myfriend@yahoo.com',
+    //   subject: 'Reset password',
+    //   text: `http://localhost:5173/reset-password/${token}`
+    // };
     
+    // await transport.sendMail(mailOptions);
+    return res.status(200).json({ message: 'Email sent to recover password' });  
   } catch (err) {
-    logger.error("Error on forgot password: " + err.message);
     return res.status(500).json({ message: "Error on forgot password, please try again" });
   }    
 }
@@ -498,18 +458,13 @@ module.exports.resetPassword = async(req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
     const user = await User.findByIdAndUpdate({_id:id}, { password: passwordHash})
     if (!user) {
-      logger.warn(`User with id ${id} not found`);
       return res.status(404).json({ message: 'User not found' });
     }
-    logger.info('Successfully reset password for user', { userId: id });
     return res.status(200).json({ message: 'Password updated successfully' });
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError) {
-      logger.error("Invalid token");
       return res.status(400).json({ message: "Invalid token" });
     }
-
-    logger.error("Cannot reset password, try again.", { error: err.message });
     return res.status(500).json({ message: "Cannot reset password, try again." });
   }
 };
@@ -557,15 +512,10 @@ module.exports.resetPassword = async(req, res) => {
 module.exports.logout = (req, res) => {
   try {
     // Limpa o cookie de refresh token
-    res.clearCookie("refreshToken");
     res.clearCookie("token");
-    // Loga a ação de logout
-    logger.info('Logout successful');
-    
     // Retorna uma resposta de sucesso
-    res.status(200).json({ message: "Logout successful." });
+    res.status(200).json({success: true, message: "Logout successful." });
   } catch (error) {
-      logger.error(`Logout error: ${error.message}`);
       res.status(500).json({ message: "An error occurred during logout." });
   }
 };
