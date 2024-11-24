@@ -1,10 +1,11 @@
 const User = require("../models/User");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto')
 
 const { generateTokenAndSetCookie } = require("../utils/auth");
 const { send } = require("../mailtrap/mailtrap")
-const { sendVerificationEmail } = require("../mailtrap/emails")
+const { sendVerificationEmail, sendPasswordResetEmail } = require("../mailtrap/emails")
 
 /**
  * @swagger
@@ -350,35 +351,27 @@ module.exports.forgotPassword = async(req, res) =>{
   const { email } = req.body;
   
   try {
-    const oldUser = await User.findOne({ email });
+    const user = await User.findOne({ email });
     
-    if (!oldUser) {
-      return res.status(422).json({ message: 'User does not exist' });
+    if (!user) {
+      return res.status(422).json({ success: false, message: "User not found"});
     }
-    const token = generateTokenAndSetCookie(oldUser.id)
-    send(token)
     
+    // Generate reset token
+		const resetToken = crypto.randomBytes(20).toString("hex");
+		const resetTokenExpiresAt = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
 
-    // const transport = nodemailer.createTransport({
-    //   host: process.env.MAIL_HOST,
-    //   port: process.env.MAIL_PORT,
-    //   auth: {
-    //     user: process.env.MAIL_USER,
-    //     pass: process.env.MAIL_PASS
-    //   }
-    // });
+		user.resetPasswordToken = resetToken;
+		user.resetPasswordExpiresAt = resetTokenExpiresAt;
 
-    // var mailOptions = {
-    //   from: 'youremail@gmail.com',
-    //   to: 'myfriend@yahoo.com',
-    //   subject: 'Reset password',
-    //   text: `http://localhost:5173/reset-password/${token}`
-    // };
-    
-    // await transport.sendMail(mailOptions);
-    return res.status(200).json({ message: 'Email sent to recover password' });  
+		await user.save();
+    // send email
+		await sendPasswordResetEmail(user.email, `http://localhost:5173/reset-password/${resetToken}`);
+
+    res.status(200).json({ success: true, message: "Password reset link sent to your email" });
   } catch (err) {
-    return res.status(500).json({ message: "Error on forgot password, please try again" });
+    console.log("Error in forgotPassword ", err);
+    return res.status(500).json({ success: false, message: err.message});
   }    
 }
 /**
