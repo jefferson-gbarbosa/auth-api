@@ -4,8 +4,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto')
 
 const { generateTokenAndSetCookie } = require("../utils/auth");
-const { send } = require("../mailtrap/mailtrap")
-const { sendVerificationEmail, sendPasswordResetEmail } = require("../mailtrap/emails")
+const { sendVerificationEmail, sendPasswordResetEmail, sendResetSuccessEmail } = require("../mailtrap/emails")
 
 /**
  * @swagger
@@ -360,7 +359,7 @@ module.exports.forgotPassword = async(req, res) =>{
     // Generate reset token
 		const resetToken = crypto.randomBytes(20).toString("hex");
 		const resetTokenExpiresAt = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
-
+   
 		user.resetPasswordToken = resetToken;
 		user.resetPasswordExpiresAt = resetTokenExpiresAt;
 
@@ -442,18 +441,30 @@ module.exports.forgotPassword = async(req, res) =>{
  */
 
 module.exports.resetPassword = async(req, res) => {
-  const {token} = req.params;
-  const {password} = req.body;
   try {
-    const verify = jwt.verify(token, process.env.SECRET)
-    const id = verify.id;
-    const salt = await bcrypt.genSalt();
-    const passwordHash = await bcrypt.hash(password, salt);
-    const user = await User.findByIdAndUpdate({_id:id}, { password: passwordHash})
+    const {token} = req.params;
+    const {password} = req.body;
+  
+    const user = await User.findOne({
+			resetPasswordToken: token,
+			resetPasswordExpiresAt: { $gt: Date.now() },
+		});
+   
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    return res.status(200).json({ message: 'Password updated successfully' });
+  
+    const salt = await bcrypt.genSalt();
+    const passwordHash = await bcrypt.hash(password, salt);
+    
+		user.password = passwordHash;
+		user.resetPasswordToken = undefined;
+		user.resetPasswordExpiresAt = undefined;
+		await user.save();
+
+    await sendResetSuccessEmail(user.email);
+   
+    return res.status(200).json({ success: true, message: "Password reset successful"  });
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError) {
       return res.status(400).json({ message: "Invalid token" });
