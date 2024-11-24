@@ -102,7 +102,92 @@ module.exports.register = async (req, res) => {
     res.status(500).json({message: 'Registration failed.'})
   }
 }
-
+/**
+ * @swagger
+ * /auth/verify-email:
+ *   post:
+ *     summary: Verifica o e-mail do usuário com um código de verificação..
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: O código de verificação enviado para o e-mail do usuário.
+ *                 example: "1234567890abcdef"
+ *     responses:
+ *       200:
+ *         description: E-mail verificado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Email verified successfully"
+ *                user:
+ *                   type: object
+ *                   properties:
+ *                    _id:
+ *                      type: string
+ *                     description: ID do usuário.
+ *                    example: "605c72ef1532073c8b96ad15"
+ *                     email:
+ *                       type: string
+ *                      description: E-mail do usuário.
+ *                       example: "user@example.com"
+ *                     isVerified:
+ *                      type: boolean
+ *                      description: Status de verificação do usuário.
+ *                       example: true
+ *                     createdAt:
+ *                       type: string
+ *                      format: date-time
+ *                      description: Data de criação da conta.
+ *                     example: "2024-01-01T00:00:00Z"
+ *                  updatedAt:
+ *                      type: string
+ *                      format: date-time
+ *                      description: Data da última atualização do usuário.
+ *                      example: "2024-01-01T00:00:00Z"
+ *                   password:
+ *                     type: string
+ *                     description: Senha do usuário (não retornada na resposta).
+ *                      example: "password123"
+ *       400:
+ *         description: Código de verificação inválido ou expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false"
+ *                 message:
+ *                    type: string
+ *                    example: "Código para verificação inválido ou expirado."
+ *       500:
+ *         description: Erro interno no servidor ao tentar verificar o e-mail.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                success:
+ *                  type: boolean
+ *                  example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Erro interno do servidor."
+ */
 module.exports.verifyEmail = async(req, res) =>{
   const { code } = req.body;
 	try {
