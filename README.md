@@ -1,27 +1,61 @@
-# Api de Autenticação JWT com sistema construído em Node.js, Express e MongoDB Atlas.
+# API de Autenticação JWT com Node.js, Express e MongoDB Atlas.
 
-Api Node.js e Express com autenticação de usuário utilizando JWT(Json Web Token), Nodemailer para recuperação de senha, MongoDB Atlas para serviços de armazenamento de dados na nuvem.
+Esta API oferece autenticação de usuário utilizando JWT (JSON Web Token), Nodemailer para recuperação de senha e MongoDB Atlas como serviço de armazenamento de dados na nuvem.
 
-Em resumo,uma API de autenticação é um conjunto de regras e ferramentas que permite a um sistema verificar a identidade de um usuário ou de uma aplicação. Em outras palavras, é um mecanismo que ajuda a garantir que apenas pessoas ou sistemas autorizados tenham acesso a determinados recursos ou informações.
+A API fornece funcionalidades essenciais para gerenciar usuários, incluindo registro, login, recuperação de senha, verificação de e-mail e logout, usando JSON Web Tokens (JWT) para autenticação. A aplicação usa MongoDB Atlas para armazenar os dados dos usuários de forma segura na nuvem e Nodemailer para enviar e-mails, como no processo de recuperação de senha.
 
 ## Requisitos
 
-### Requisitos funcionais
+- [x] Registro de Usuário: Criação de novo usuário com envio de e-mail de verificação;
+- [x] Login de Usuário: Geração de tokens JWT para autenticação;
+- [x] Verificação de E-mail: Confirmação do e-mail do usuário via código de verificação;
+- [x] Recuperação de Senha: Envio de link para recuperação de senha por e-mail;
+- [x] Alteração de Senha: Mudança de senha com segurança após verificação do token;
+- [x] Logout: Revogação do token de autenticação ao sair;
+- [x] Obter Informações do Usuário: Acesso a informações básicas do usuário autenticado.
 
-- [x] Permitir que novos usuários criem uma conta fornecendo informações como nome, e-mail e senha;
-- [x] Permitir que usuários existentes se autentiquem fornecendo credenciais válidas (e-mail e senha) para obter um token de acesso;
-- [x] Permitir que usuários recuperem ou redefinam suas senhas se esquecerem;
-- [x] Permitir que usuários encerrem suas sessões e invalidem tokens de acesso;
-- [x] Confirmar a validade do endereço de e-mail fornecido durante o registro.
+## Tecnologias Utilizadas
 
-### Requisitos não-funcionais
+- [x] Node.js: Ambiente de execução JavaScript;
+- [x] Express: Framework para construção da API;
+- [x] MongoDB Atlas: Banco de dados NoSQL na nuvem para persistência de dados;
+- [x] JWT (JSON Web Token): Para autenticação e autorização;
+- [x] Nodemailer: Para envio de e-mails;
+- [x] bcrypt: Para criptografia de senhas.
 
-- [x] Garantir que todas as operações da API estejam protegidas contra ataques e vulnerabilidades;
-- [x] A API deve ser fácil de usar e bem documentada para que desenvolvedores possam integrá-la facilmente;
-- [x] O código da API deve ser modular e fácil de manter e atualizar;
-- [x] A API deve registrar eventos relevantes para permitir a auditoria e solução de problemas.
 
-## Configurações Iniciais
+## Pré-Requisitos
+
+- [x] Node.js;
+- [x] MongoDB Atlas (ou MongoDB local, se preferir);
+- [x] Nodemailer configurado para envio de e-mails.
+
+## Instalação
+
+Fazer o clone do repositório
+
+```
+git clone https://github.com/jefferson-gbarbosa/auth-api
+```
+
+Instalar os pacotes
+
+```
+npm install 
+```
+Instale o **nodemon** 
+
+```
+npm install nodemon
+```
+
+Rodar o servidor
+
+```
+npm start
+```
+
+## Configurações
 
 Antes de tudo, é preciso saber. Em **Instalação**, logo após clonar o repositório, é preciso configurar a estrutura do arquivo **mail.json** com as credenciais **SMTP** do seu provedor de email. O arquivo está localizado na pasta **config**. No projeto foi utilizado a ferramenta [Mailtrap](https://mailtrap.io/) para testar o envio de email.
 
@@ -47,31 +81,23 @@ module.exports = {
 }
 ```
 
-## Instalação
-
-Instale o **nodemon** 
+Crie um arquivo **.env** na raiz do projeto e adicione as seguintes variáveis:
 
 ```
-npm install nodemon
-```
-
-Fazer o clone do repositório
-
-```
-git clone https://github.com/jefferson-gbarbosa/auth-api
-```
-
-Instalar os pacotes
+MONGO_URI=mongodb+srv://<seu-usuario>:<sua-senha>@cluster0.mongodb.net/nome-do-banco?retryWrites=true&w=majority
+JWT_SECRET=seu-segredo-jwt
+JWT_EXPIRES_IN=1d
+SMTP_HOST=smtp.seuprovedor.com
+SMTP_PORT=587
+SMTP_USER=seu-email@dominio.com
+SMTP_PASS=sua-senha
+CLIENT_URL=http://localhost:5173
 
 ```
-npm install 
-```
-
-Rodar o servidor
-
-```
-npm start
-```
+- MONGO_URI: A URL de conexão com o MongoDB Atlas.
+- JWT_SECRET: Chave secreta para assinar os tokens JWT.
+- SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS: Configurações do servidor SMTP para envio de e-mails (pode ser Gmail ou outro provedor).
+- CLIENT_URL: A URL do seu cliente front-end (caso utilize um).
 
 ## Testando API
 
@@ -89,6 +115,17 @@ Para criar um usuário, crie e utilize a rota ```http://localhost:3000/auth/regi
 }
 ```
 
+#### Verificação de E-mail
+
+Esta rota permite que o usuário verifique seu e-mail após o registro. O código de verificação é enviado por e-mail ao usuário, e ele deve enviar esse código de volta para confirmar o endereço de e-mail.
+
+```
+{
+	"code": "123456"
+}
+```
+
+
 #### Autenticando usuário
 
 Para autenticar usuário, crie e utilize a rota ```http://localhost:3000/auth/login``` com método **POST**, especificando **email** e **password**. 
@@ -100,10 +137,8 @@ Para autenticar usuário, crie e utilize a rota ```http://localhost:3000/auth/lo
 }
 ```
 
-
 #### Esqueci a Senha
-
-Para trocar de senha, um email é enviado ao usuário com **token** para ser adicionado a requisição **reset-password**. Crie e utilize a rota ```http://localhost:3000/auth/forgot-password``` com método **POST** para enviar um link com o token ao email do usuário. Copie o token.
+Esta rota ```http://localhost:3000/auth/forgot-password``` ,com método **POST**, permite que um usuário solicite um link de redefinição de senha. O usuário deve fornecer o endereço de e-mail associado à sua conta, e a API enviará um link de redefinição de senha para o e-mail fornecido.
 
 ```
 {
@@ -111,26 +146,40 @@ Para trocar de senha, um email é enviado ao usuário com **token** para ser adi
 }
 ```
 
-Crie e utilize a rota ```http://localhost:3000/auth/reset-password/:token``` com método **POST** para trocar a senha do usuário. 
+
+A rota ```http://localhost:3000/auth/reset-password/:token``` com método **POST** permite que o usuário redefina sua senha utilizando um token de redefinição que foi gerado previamente e enviado ao e-mail do usuário.
 
 ```
 {
-	"password": "hudson19937416"
+	"password": "nova_senha123"
 }
 ```
 
 ### Informações do Usuário
 
-Para acessar dados do cadastro, como nome e email, o usuário deve utilizar a rota ```http://localhost:3000/auth/profile``` com método **GET**, e com o ID do cadastro, obter os dados do perfil do usuário.
+Esta rota ```http://localhost:3000/auth/profile``` com método **GET**, retorna as informações básicas do usuário autenticado, incluindo nome e e-mail. O usuário deve estar autenticado para acessar essa rota.
 
-### Para atualizar o token de acesso
 
-Para que o usuário permaneça com acesso depois de um tempo, utilize a rota ```http://localhost:3000/auth/refresh``` com o método **GET** e assim garantir o token de autenticação.
+- **Authorization**: O token JWT do usuário deve ser enviado no cabeçalho da requisição.
+
+Exemplo de cabeçalho de requisição:
+
+```http
+Authorization: Bearer {token_jwt_aqui}
+```
 
 ## Para encerrar a sessão
+Esta rota ```http://localhost:3000/auth/logout``` com o método **GET**, permite que o usuário faça o logout, limpando o refresh token do cookie e efetivamente encerrando a sessão do usuário.
 
-Para ermitir que usuários encerrem suas sessões e invalidem tokens de acesso, utilize a rota ```http://localhost:3000/auth/logout``` com o método **GET**.
+Se o logout for bem-sucedido, a resposta será:
 
+```json
+{
+  "success": true,
+  "message": "Logout successful."
+}
+
+```
 
 ## Documentação da API (Swagger)
 
