@@ -5,8 +5,8 @@ const  generateTokenAndSetCookie = (id,res) =>{
   
     res.cookie('token', token, {
         httpOnly: true,
-        sameSite: "strict",
-        expires: new Date(Date.now() + 60 * 15 * 1000),
+        // sameSite: "strict",
+        // expires: new Date(Date.now() + 60 * 15 * 1000),
     });
 
     return token;
