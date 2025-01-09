@@ -2,10 +2,7 @@ const User = require("../models/User");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto')
-
-const { generateTokenAndSetCookie } = require("../utils/auth");
 const { sendVerificationEmail, sendPasswordResetEmail, sendResetSuccessEmail } = require("../mailtrap/emails")
-
 module.exports.register = async (req, res) => {
   const {name, email, password} = req.body;
   
@@ -29,9 +26,7 @@ module.exports.register = async (req, res) => {
       verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
     })
     await user.save();
-
-    generateTokenAndSetCookie(user._id,res)
-      
+    
     await sendVerificationEmail(user.email, verificationToken);
 
     res.status(200).json({ success: true, message:'User registered sucessfully',
@@ -90,7 +85,16 @@ module.exports.login = async(req, res) => {
       if (!checkPassword) {
         return res.status(401).json({ success: false, message: "Incorrect email or password" });
       }
-      const token = generateTokenAndSetCookie(user._id, res)
+      const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: 60 });
+      const expireDate = new Date(Date.now() + 60000); 
+      res.cookie('token', token, {
+        httpOnly: true,
+        expires: expireDate
+      });
+
+      const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_REFRESH, { expiresIn: '1d'});
+      res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: 'strict', maxAge: 24 * 60 * 60 * 1000 })
+
       user.lastLogin = new Date();
 		  await user.save();
       return res.status(200).json({success: true, message: "logged in successfully", token});
@@ -109,6 +113,22 @@ module.exports.infoUser = async (req, res) => {
     return res.status(200).json({ name: user.name, email: user.email });
   } catch (err) {
     return res.status(500).json({ message: "Error retrieving user info" });
+  }
+};
+
+module.exports.refreshToken = async(req, res) => {
+  const id = req.user.id
+  try {
+    const user = await User.findById(id);
+    const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: 60 });
+    const expireDate = new Date(Date.now() + 60000); 
+    res.cookie('token', token, {
+      httpOnly: true,
+      expires: expireDate
+    });
+    return res.json({ token });
+  } catch (err) {
+    return res.status(500).json({ message: "Error generating token for user id!" });
   }
 };
 

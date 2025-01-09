@@ -15,5 +15,21 @@ const requireAuth = (req, res, next) => {
   }
 
 };
+// check current user
+const requireRefreshToken = (req, res, next) => {
+  try {
+    const refreshTokenCookie = req.cookies.refreshToken;
+    jwt.verify(refreshTokenCookie,process.env.JWT_REFRESH, (err, decoded)=> {
+      if(err){
+        res.json({ status: 'Erro', message: "No token found"});
+      }else{
+        req.user= decoded
+        next();
+      }
+    })
+  } catch (err) {
+    return res.status(500).json({ msg: "A server error occurred, please try again later!" });
+  } 
+};
 
-module.exports = { requireAuth};
+module.exports = { requireAuth, requireRefreshToken};
