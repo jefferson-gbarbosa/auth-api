@@ -27,5 +27,8 @@
     "validator": "^13.11.0",
     "yamljs": "^0.3.0"
   },
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "@types/js-cookie": "^3.0.6"
+  }
 }
