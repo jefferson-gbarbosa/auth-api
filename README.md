@@ -180,6 +180,34 @@ Se o logout for bem-sucedido, a resposta será:
 }
 
 ```
+### Refresh Token (Atualização do Token)
+
+Esta rota permite que o cliente obtenha um novo token de acesso sem precisar fornecer as credenciais (email e senha) novamente. Isso é importante para manter a sessão do usuário ativa por um período mais longo, sem comprometer a segurança.
+
+A rota utilizada é `http://localhost:3000/auth/refresh-token` com método **GET**.
+
+**Pré-requisitos:**
+
+*   O usuário deve possuir um token válido (que ainda não expirou). Este token é normalmente armazenado em um cookie `httpOnly` (como demonstrado na seção "Autenticando usuário").
+
+**Como Funciona:**
+
+1.  O cliente envia uma requisição **GET** para `/auth/refresh-token`. O cookie `token` (contendo o JWT atual) é automaticamente enviado no cabeçalho da requisição pelo navegador.
+2.  O servidor verifica a validade do token presente no cookie.
+3.  Se o token for válido (e não expirou), o servidor gera um novo token de acesso e o envia de volta para o cliente, também definindo-o em um cookie `httpOnly`.
+4.  Se o token for inválido ou ausente, o servidor retorna um erro (ex: código de status 401 Unauthorized).
+
+**Exemplo de Requisição (GET /auth/refresh-token):**
+
+(Nenhum corpo de requisição é necessário, pois o token é enviado no cookie)
+
+**Exemplo de Resposta Bem-Sucedida (Status 200 OK):**
+
+```json
+{
+    "token": "novo_token_jwt_aqui"
+}
+```
 
 ## Documentação da API (Swagger)
 
