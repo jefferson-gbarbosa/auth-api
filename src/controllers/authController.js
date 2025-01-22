@@ -85,7 +85,7 @@ module.exports.login = async(req, res) => {
       if (!checkPassword) {
         return res.status(401).json({ success: false, message: "Incorrect email or password" });
       }
-      const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: 60 });
+      const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: '15m'});
       const expireDate = new Date(Date.now() + 60000); 
       res.cookie('token', token, {
         httpOnly: true,
@@ -120,7 +120,7 @@ module.exports.refreshToken = async(req, res) => {
   const id = req.user.id
   try {
     const user = await User.findById(id);
-    const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: 60 });
+    const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: '15m'});
     const expireDate = new Date(Date.now() + 60000); 
     res.cookie('token', token, {
       httpOnly: true,
