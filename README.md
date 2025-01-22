@@ -180,7 +180,7 @@ Se o logout for bem-sucedido, a resposta será:
 }
 
 ```
-### Refresh Token (Atualização do Token)
+## Refresh Token (Atualização do Token)
 
 Esta rota permite que o cliente obtenha um novo token de acesso sem precisar fornecer as credenciais (email e senha) novamente. Isso é importante para manter a sessão do usuário ativa por um período mais longo, sem comprometer a segurança.
 
