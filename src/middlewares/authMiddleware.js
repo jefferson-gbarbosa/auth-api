@@ -6,8 +6,8 @@ const requireAuth = (req, res, next) => {
       if (err) {
         return res.status(401).json({ status: 'Erro', message: "Invalid token" });
       } else {
-        req.user = decoded; // Armazena as informações decodificadas no objeto de requisição
-        next(); // Chama o próximo middleware ou rota
+        req.user = decoded; 
+        next(); 
       }
     });
   } else {
@@ -19,9 +19,12 @@ const requireAuth = (req, res, next) => {
 const requireRefreshToken = (req, res, next) => {
   try {
     const refreshTokenCookie = req.cookies.refreshToken;
+    if (!refreshTokenCookie) {
+      return res.status(401).json({ status: 'error', message: 'No token found' });
+    }
     jwt.verify(refreshTokenCookie,process.env.JWT_REFRESH, (err, decoded)=> {
       if(err){
-        res.json({ status: 'Erro', message: "No token found"});
+        return res.status(403).json({ status: 'error', message: 'Invalid or expired token' });
       }else{
         req.user= decoded
         next();

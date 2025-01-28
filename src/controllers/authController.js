@@ -4,14 +4,19 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto')
 const { sendVerificationEmail, sendPasswordResetEmail, sendResetSuccessEmail } = require("../mailtrap/emails")
 module.exports.register = async (req, res) => {
-  const {name, email, password} = req.body;
-  
   try {
+    const {name, email, password} = req.body;
+
+    // Validação de entrada
+    if(!name || !email || !password){
+      return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
+    }
     // check if user exits
     const userExists = await User.findOne({ email: email });
     if(userExists){
-      return res.status(400).json({success:false, message: 'User already exists'})
+      return res.status(409).json({message: 'User already exists'})
     }
+    
     // Creat password
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(password, salt);
@@ -29,7 +34,7 @@ module.exports.register = async (req, res) => {
     
     await sendVerificationEmail(user.email, verificationToken);
 
-    res.status(200).json({ success: true, message:'User registered sucessfully',
+    res.status(200).json({ message:'User registered sucessfully',
       user: {
 				...user._doc,
 				password: undefined,
@@ -50,7 +55,7 @@ module.exports.verifyEmail = async(req, res) =>{
 		});
 
 		if (!user) {
-			return res.status(400).json({ success: false, message: "Invalid or expired verification code" });
+			return res.status(400).json({ message: "Invalid or expired verification code" });
 		}
 
 		user.isVerified = true;
@@ -59,7 +64,6 @@ module.exports.verifyEmail = async(req, res) =>{
 		await user.save();
 
 		res.status(200).json({
-			success: true,
 			message: "Email verified successfully",
 			user: {
 				...user._doc,
@@ -68,16 +72,20 @@ module.exports.verifyEmail = async(req, res) =>{
 		});
 	} catch (error) {
 		console.log("error in verifyEmail ", error);
-		res.status(500).json({ success: false, message: "Server error" });
+		res.status(500).json({ message: "Server error" });
 	}
 }
 
 module.exports.login = async(req, res) => {
     const { email, password } = req.body;
-    try {
+     try {
+      if (!email || !password) {
+        return res.status(400).json({success: false, message: 'Email and password are required' });
+      }
+
       const user = await User.findOne({ email: email })
       if(!user){
-        return res.status(400).json({success: false, message: 'User does not exist'})
+        return res.status(400).json({success: false,message: 'User does not exist'})
       }
       // check if password match
       const checkPassword = await bcrypt.compare(password, user.password);
@@ -87,6 +95,7 @@ module.exports.login = async(req, res) => {
       }
       const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: '15m'});
       const expireDate = new Date(Date.now() + 60000); 
+
       res.cookie('token', token, {
         httpOnly: true,
         expires: expireDate
@@ -97,10 +106,11 @@ module.exports.login = async(req, res) => {
 
       user.lastLogin = new Date();
 		  await user.save();
-      return res.status(200).json({success: true, message: "logged in successfully", token});
+      
+      return res.status(200).json({message: "logged in successfully", token});
     } catch (err) {
-      console.log(err)
-      res.status(500).json({success: false,message: 'Error during login process'})
+      console.error('Error during login process:', err.message || err);
+      res.status(500).json({message: 'Error during login process'})
     }
 }
 module.exports.infoUser = async (req, res) => {
@@ -139,7 +149,7 @@ module.exports.forgotPassword = async(req, res) =>{
     const user = await User.findOne({ email });
     
     if (!user) {
-      return res.status(422).json({ success: false, message: "User not found"});
+      return res.status(422).json({ message: "User not found"});
     }
     
     // Generate reset token
@@ -153,10 +163,10 @@ module.exports.forgotPassword = async(req, res) =>{
     // send email
 		await sendPasswordResetEmail(user.email, `http://localhost:5173/reset-password/${resetToken}`);
 
-    res.status(200).json({ success: true, message: "Password reset link sent to your email" });
+    res.status(200).json({ message: "Password reset link sent to your email" });
   } catch (err) {
     console.log("Error in forgotPassword ", err);
-    return res.status(500).json({ success: false, message: err.message});
+    return res.status(500).json({ message: err.message});
   }    
 }
 
@@ -171,7 +181,7 @@ module.exports.resetPassword = async(req, res) => {
 		});
    
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(400).json({ message: 'Token is invalid or expired' });
     }
   
     const salt = await bcrypt.genSalt();
@@ -184,7 +194,7 @@ module.exports.resetPassword = async(req, res) => {
 
     await sendResetSuccessEmail(user.email);
    
-    return res.status(200).json({ success: true, message: "Password reset successful"  });
+    return res.status(200).json({ message: "Password reset successful"  });
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError) {
       return res.status(400).json({ message: "Invalid token" });
